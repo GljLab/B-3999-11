@@ -523,17 +523,36 @@ public class UserController {
         long totalFollows = userFollowRepository.count();
         long totalUsers = userRepository.count();
         double avgFollows = totalUsers > 0 ? (double) totalFollows / totalUsers : 0;
+        long mutualFollows = userFollowRepository.countMutualFollowsOverall();
 
         stats.put("totalFollows", totalFollows);
         stats.put("avgFollowsPerUser", Math.round(avgFollows * 100.0) / 100.0);
         stats.put("totalUsers", totalUsers);
+        stats.put("mutualFollows", mutualFollows);
+
+        LocalDateTime cutoff7d = LocalDateTime.now().minusDays(7);
+        LocalDateTime cutoff30d = LocalDateTime.now().minusDays(30);
+        long activeUsers7d = userRepository.countActiveUsers(cutoff7d);
+        long activeUsers30d = userRepository.countActiveUsers(cutoff30d);
+        double activeRate7d = totalUsers > 0 ? (double) activeUsers7d / totalUsers * 100 : 0;
+        double activeRate30d = totalUsers > 0 ? (double) activeUsers30d / totalUsers * 100 : 0;
+
+        stats.put("activeUsers7d", activeUsers7d);
+        stats.put("activeUsers30d", activeUsers30d);
+        stats.put("activeRate7d", Math.round(activeRate7d * 100.0) / 100.0);
+        stats.put("activeRate30d", Math.round(activeRate30d * 100.0) / 100.0);
+
+        double cancelRate = userFollowRepository.calculateCancelRate();
+        stats.put("cancelRate", Math.round(cancelRate * 100.0) / 100.0);
 
         List<Object[]> trendData = userFollowRepository.getFollowGrowthTrend(30);
         List<Map<String, Object>> trend = new ArrayList<>();
         for (Object[] row : trendData) {
             Map<String, Object> item = new HashMap<>();
             item.put("date", row[0]);
-            item.put("count", row[1]);
+            item.put("newFollows", row[1]);
+            item.put("cancelCount", 0);
+            item.put("netGrowth", row[1]);
             trend.add(item);
         }
         stats.put("growthTrend", trend);
@@ -573,6 +592,146 @@ public class UserController {
         result.put("content", from < to ? rankings.subList(from, to) : List.of());
         result.put("totalElements", rankings.size());
         result.put("totalPages", (int) Math.ceil((double) rankings.size() / size));
+
+        return Result.success(result);
+    }
+
+    @GetMapping("/{id}/liked-posts")
+    public Result<Map<String, Object>> getLikedPosts(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request) {
+
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) {
+            return Result.error(404, "用户不存在");
+        }
+
+        Long currentUserId = getCurrentUserId(request);
+        boolean isOwner = currentUserId != null && currentUserId.equals(id);
+        if (!isOwner) {
+            return Result.error(403, "仅本人可查看点赞记录");
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<PostLike> likePage = postLikeRepository.findByUserIdOrderByCreatedAtDesc(id, pageable);
+
+        List<Long> postIds = likePage.getContent().stream().map(PostLike::getPostId).toList();
+        Map<Long, CommunityPost> postMap = new HashMap<>();
+        communityPostRepository.findAllById(postIds).forEach(p -> postMap.put(p.getId(), p));
+
+        List<CommunityPostVO> voList = likePage.getContent().stream()
+            .map(like -> {
+                CommunityPost post = postMap.get(like.getPostId());
+                if (post == null) return null;
+                User author = userRepository.findById(post.getUserId()).orElse(null);
+                CommunityPostVO vo = CommunityPostVO.from(post, author);
+                vo.setLiked(true);
+                return vo;
+            })
+            .filter(Objects::nonNull)
+            .toList();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", voList);
+        result.put("totalElements", likePage.getTotalElements());
+        result.put("totalPages", likePage.getTotalPages());
+        result.put("currentPage", page);
+        result.put("last", likePage.isLast());
+
+        return Result.success(result);
+    }
+
+    @GetMapping("/{id}/bookmarked-posts")
+    public Result<Map<String, Object>> getBookmarkedPosts(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request) {
+
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) {
+            return Result.error(404, "用户不存在");
+        }
+
+        Long currentUserId = getCurrentUserId(request);
+        boolean isOwner = currentUserId != null && currentUserId.equals(id);
+        if (!isOwner) {
+            return Result.error(403, "仅本人可查看收藏记录");
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<PostBookmark> bookmarkPage = postBookmarkRepository.findByUserIdOrderByCreatedAtDesc(id, pageable);
+
+        List<Long> postIds = bookmarkPage.getContent().stream().map(PostBookmark::getPostId).toList();
+        Map<Long, CommunityPost> postMap = new HashMap<>();
+        communityPostRepository.findAllById(postIds).forEach(p -> postMap.put(p.getId(), p));
+
+        List<CommunityPostVO> voList = bookmarkPage.getContent().stream()
+            .map(bookmark -> {
+                CommunityPost post = postMap.get(bookmark.getPostId());
+                if (post == null) return null;
+                User author = userRepository.findById(post.getUserId()).orElse(null);
+                CommunityPostVO vo = CommunityPostVO.from(post, author);
+                vo.setBookmarked(true);
+                return vo;
+            })
+            .filter(Objects::nonNull)
+            .toList();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", voList);
+        result.put("totalElements", bookmarkPage.getTotalElements());
+        result.put("totalPages", bookmarkPage.getTotalPages());
+        result.put("currentPage", page);
+        result.put("last", bookmarkPage.isLast());
+
+        return Result.success(result);
+    }
+
+    @GetMapping("/{id}/comments")
+    public Result<Map<String, Object>> getUserComments(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) {
+            return Result.error(404, "用户不存在");
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<PostComment> commentPage = postCommentRepository.findByUserIdOrderByCreatedAtDesc(id, pageable);
+
+        List<Long> postIds = commentPage.getContent().stream()
+            .map(PostComment::getPostId)
+            .distinct()
+            .toList();
+        Map<Long, CommunityPost> postMap = new HashMap<>();
+        communityPostRepository.findAllById(postIds).forEach(p -> postMap.put(p.getId(), p));
+
+        List<Map<String, Object>> voList = commentPage.getContent().stream()
+            .map(comment -> {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", comment.getId());
+                item.put("content", comment.getContent());
+                item.put("createdAt", comment.getCreatedAt());
+                item.put("postId", comment.getPostId());
+                CommunityPost post = postMap.get(comment.getPostId());
+                if (post != null) {
+                    item.put("postTitle", post.getTitle());
+                }
+                return item;
+            })
+            .toList();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", voList);
+        result.put("totalElements", commentPage.getTotalElements());
+        result.put("totalPages", commentPage.getTotalPages());
+        result.put("currentPage", page);
+        result.put("last", commentPage.isLast());
 
         return Result.success(result);
     }

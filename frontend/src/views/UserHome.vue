@@ -18,6 +18,9 @@
                 <span class="text-sm text-gray-400">加入 {{ profile.daysJoined }} 天</span>
               </div>
               <p class="text-gray-600 mb-3">{{ profile.user.signature || '这个人很懒，什么都没写~' }}</p>
+              <div class="text-xs text-gray-400 mb-3">
+                <span v-if="profile.stats.lastActiveAt">🕒 最近活跃: {{ formatDateTime(profile.stats.lastActiveAt) }}</span>
+              </div>
               <div class="flex flex-wrap gap-6 text-sm">
                 <div class="flex items-center gap-2">
                   <span class="text-gray-500">支持者</span>
@@ -115,8 +118,9 @@
                 <div v-for="post in posts" :key="post.id" class="border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow">
                   <router-link :to="`/community/${post.id}`" class="block">
                     <div class="flex gap-4">
-                      <div v-if="post.coverImage" class="w-32 h-24 rounded-lg overflow-hidden flex-shrink-0">
-                        <img :src="post.coverImage" class="w-full h-full object-cover" alt="">
+                      <div class="w-32 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                        <img v-if="post.coverImage" :src="getImageUrl(post.coverImage)" class="w-full h-full object-cover" alt="">
+                        <span v-else class="text-3xl">🌱</span>
                       </div>
                       <div class="flex-1 min-w-0">
                         <h4 class="font-semibold text-gray-800 mb-2 truncate">{{ post.title }}</h4>
@@ -144,6 +148,84 @@
                   @current-change="loadPosts"
                 />
               </div>
+            </el-tab-pane>
+
+            <!-- 互动 -->
+            <el-tab-pane label="💬 互动" name="interactions">
+              <el-tabs v-model="interactionTab" type="card" class="mb-4">
+                <el-tab-pane v-if="profile?.isOwner" label="👍 点赞记录" name="likes">
+                  <div v-if="likedPosts.length === 0 && !likedPostsLoading" class="py-12 text-center text-gray-400">
+                    暂无点赞记录
+                  </div>
+                  <div v-else class="space-y-4">
+                    <div v-for="post in likedPosts" :key="post.id" class="border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow">
+                      <router-link :to="`/community/${post.id}`" class="block">
+                        <div class="flex gap-4">
+                          <div class="w-24 h-18 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                            <img v-if="post.coverImage" :src="getImageUrl(post.coverImage)" class="w-full h-full object-cover" alt="">
+                            <span v-else class="text-2xl">🌱</span>
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <h4 class="font-semibold text-gray-800 mb-2 truncate">{{ post.title }}</h4>
+                            <p class="text-sm text-gray-500 line-clamp-1">{{ post.description }}</p>
+                            <div class="flex items-center gap-4 text-xs text-gray-400 mt-2">
+                              <span>💬 {{ post.commentCount }}</span>
+                              <span>👍 {{ post.likeCount }}</span>
+                              <span>⭐ {{ post.bookmarkCount }}</span>
+                              <span>{{ formatDate(post.createdAt) }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </router-link>
+                    </div>
+                  </div>
+                </el-tab-pane>
+
+                <el-tab-pane v-if="profile?.isOwner" label="⭐ 收藏记录" name="bookmarks">
+                  <div v-if="bookmarkedPosts.length === 0 && !bookmarkedPostsLoading" class="py-12 text-center text-gray-400">
+                    暂无收藏记录
+                  </div>
+                  <div v-else class="space-y-4">
+                    <div v-for="post in bookmarkedPosts" :key="post.id" class="border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow">
+                      <router-link :to="`/community/${post.id}`" class="block">
+                        <div class="flex gap-4">
+                          <div class="w-24 h-18 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                            <img v-if="post.coverImage" :src="getImageUrl(post.coverImage)" class="w-full h-full object-cover" alt="">
+                            <span v-else class="text-2xl">🌱</span>
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <h4 class="font-semibold text-gray-800 mb-2 truncate">{{ post.title }}</h4>
+                            <p class="text-sm text-gray-500 line-clamp-1">{{ post.description }}</p>
+                            <div class="flex items-center gap-4 text-xs text-gray-400 mt-2">
+                              <span>💬 {{ post.commentCount }}</span>
+                              <span>👍 {{ post.likeCount }}</span>
+                              <span>⭐ {{ post.bookmarkCount }}</span>
+                              <span>{{ formatDate(post.createdAt) }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </router-link>
+                    </div>
+                  </div>
+                </el-tab-pane>
+
+                <el-tab-pane label="📝 评论记录" name="comments">
+                  <div v-if="userComments.length === 0 && !commentsLoading" class="py-12 text-center text-gray-400">
+                    暂无评论记录
+                  </div>
+                  <div v-else class="space-y-4">
+                    <div v-for="comment in userComments" :key="comment.id" class="border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow">
+                      <div class="text-sm text-gray-600 mb-2 leading-relaxed">{{ comment.content }}</div>
+                      <div class="flex items-center justify-between text-xs text-gray-400">
+                        <router-link :to="`/community/${comment.postId}`" class="text-green-600 hover:text-green-700">
+                          📄 {{ comment.postTitle || '查看原帖' }}
+                        </router-link>
+                        <span>{{ formatDateTime(comment.createdAt) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </el-tab-pane>
+              </el-tabs>
             </el-tab-pane>
 
             <!-- 收藏农友 -->
@@ -455,6 +537,15 @@ const loadProducts = async () => {
 const logistics = ref([])
 const logisticsLoading = ref(false)
 
+// 互动记录
+const interactionTab = ref('comments')
+const likedPosts = ref([])
+const likedPostsLoading = ref(false)
+const bookmarkedPosts = ref([])
+const bookmarkedPostsLoading = ref(false)
+const userComments = ref([])
+const commentsLoading = ref(false)
+
 const loadLogistics = async () => {
   logisticsLoading.value = true
   try {
@@ -467,10 +558,56 @@ const loadLogistics = async () => {
   }
 }
 
+// 加载点赞记录
+const loadLikedPosts = async () => {
+  likedPostsLoading.value = true
+  try {
+    const res = await userApi.getLikedPosts(userId.value, { page: 0, size: 20 })
+    likedPosts.value = res.data.content
+  } catch (err) {
+    console.error(err)
+  } finally {
+    likedPostsLoading.value = false
+  }
+}
+
+// 加载收藏记录
+const loadBookmarkedPosts = async () => {
+  bookmarkedPostsLoading.value = true
+  try {
+    const res = await userApi.getBookmarkedPosts(userId.value, { page: 0, size: 20 })
+    bookmarkedPosts.value = res.data.content
+  } catch (err) {
+    console.error(err)
+  } finally {
+    bookmarkedPostsLoading.value = false
+  }
+}
+
+// 加载评论记录
+const loadUserComments = async () => {
+  commentsLoading.value = true
+  try {
+    const res = await userApi.getUserComments(userId.value, { page: 0, size: 20 })
+    userComments.value = res.data.content
+  } catch (err) {
+    console.error(err)
+  } finally {
+    commentsLoading.value = false
+  }
+}
+
 const handleTabChange = (tab) => {
   switch (tab) {
     case 'posts':
       if (posts.value.length === 0) loadPosts()
+      break
+    case 'interactions':
+      if (profile?.value?.isOwner) {
+        if (likedPosts.value.length === 0) loadLikedPosts()
+        if (bookmarkedPosts.value.length === 0) loadBookmarkedPosts()
+      }
+      if (userComments.value.length === 0) loadUserComments()
       break
     case 'following':
       if (following.value.length === 0) loadFollowing()
@@ -487,8 +624,14 @@ const handleTabChange = (tab) => {
   }
 }
 
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
 const goToTrace = (product) => {
-  ElMessage.info('跳转到溯源查询页面')
+  router.push(`/trace/${product.id}`)
 }
 
 // 编辑资料
@@ -514,6 +657,12 @@ const saveProfile = async () => {
   }
 }
 
+const getImageUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return 'http://localhost:8000' + url
+}
+
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
@@ -522,6 +671,7 @@ const formatDate = (dateStr) => {
 
 onMounted(() => {
   loadProfile()
+  loadPosts(0)
   if (store.userId) {
     editForm.value = {
       realName: store.userInfo?.realName || '',

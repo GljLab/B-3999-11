@@ -169,12 +169,18 @@
           <div class="p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-sm font-bold">
-                  {{ comment.userName ? comment.userName.charAt(0) : '?' }}
-                </div>
-                <span class="font-medium text-gray-800 text-sm">{{ comment.userName }}</span>
+                <router-link :to="`/user-home/${comment.userId}`" class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-sm font-bold overflow-hidden hover:opacity-80 transition-opacity">
+                  <span>{{ comment.userName ? comment.userName.charAt(0) : '?' }}</span>
+                </router-link>
+                <router-link :to="`/user-home/${comment.userId}`" class="font-medium text-gray-800 text-sm hover:text-green-600 transition-colors">{{ comment.userName }}</router-link>
                 <el-tag v-if="comment.userRole === 'FARMER'" type="warning" size="small">农场主</el-tag>
                 <el-tag v-else-if="comment.userRole === 'SYS_ADMIN'" type="danger" size="small">管理者</el-tag>
+                <FollowButton
+                  v-if="userStore.token && String(comment.userId) !== String(userStore.userId)"
+                  :user-id="comment.userId"
+                  size="mini"
+                  :show-self="false"
+                />
                 <span class="text-xs text-gray-400">{{ formatTime(comment.createdAt) }}</span>
               </div>
               <div class="flex items-center gap-1">
@@ -222,16 +228,22 @@
             <div v-for="reply in comment.replies" :key="reply.id" class="p-3 rounded-lg bg-gray-50/70 hover:bg-gray-100 transition-colors mb-2 border-l-3 border-green-300">
               <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">
-                    {{ reply.userName ? reply.userName.charAt(0) : '?' }}
-                  </div>
-                  <span class="font-medium text-gray-800 text-xs">{{ reply.userName }}</span>
+                  <router-link :to="`/user-home/${reply.userId}`" class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold overflow-hidden hover:opacity-80 transition-opacity">
+                    <span>{{ reply.userName ? reply.userName.charAt(0) : '?' }}</span>
+                  </router-link>
+                  <router-link :to="`/user-home/${reply.userId}`" class="font-medium text-gray-800 text-xs hover:text-green-600 transition-colors">{{ reply.userName }}</router-link>
                   <el-tag v-if="reply.userRole === 'FARMER'" type="warning" size="small">农场主</el-tag>
                   <el-tag v-else-if="reply.userRole === 'SYS_ADMIN'" type="danger" size="small">管理者</el-tag>
                   <template v-if="reply.parentUserName">
                     <span class="text-xs text-gray-400">回复</span>
                     <span class="text-xs text-green-600 font-medium">@{{ reply.parentUserName }}</span>
                   </template>
+                  <FollowButton
+                    v-if="userStore.token && String(reply.userId) !== String(userStore.userId)"
+                    :user-id="reply.userId"
+                    size="mini"
+                    :show-self="false"
+                  />
                   <span class="text-xs text-gray-400">{{ formatTime(reply.createdAt) }}</span>
                 </div>
                 <div class="flex items-center gap-1">

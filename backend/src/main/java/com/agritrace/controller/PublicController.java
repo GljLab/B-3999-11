@@ -6,6 +6,8 @@ import com.agritrace.entity.Product;
 import com.agritrace.entity.ProductBatch;
 import com.agritrace.entity.ProductSpec;
 import com.agritrace.entity.TracingCode;
+import com.agritrace.entity.User;
+import com.agritrace.repository.UserRepository;
 import com.agritrace.repository.HotProductRepository;
 import com.agritrace.repository.LogisticsRepository;
 import com.agritrace.repository.ProductBatchRepository;
@@ -29,6 +31,7 @@ public class PublicController {
     @Autowired private LogisticsRepository logisticsRepository;
     @Autowired private ProductBatchRepository batchRepository;
     @Autowired private ProductSpecRepository specRepository;
+    @Autowired private UserRepository userRepository;
 
     @GetMapping("/hot")
     public Result<?> getHotProducts() {
@@ -85,12 +88,18 @@ public class PublicController {
             }
         }
 
+        User farmer = null;
+        if (p != null && p.getFarmerId() != null) {
+            farmer = userRepository.findById(p.getFarmerId()).orElse(null);
+        }
+
         Map<String, Object> data = new HashMap<>();
         data.put("product", p);
         data.put("logistics", logs);
         data.put("traceInfo", tc);
         data.put("batch", batch);
         data.put("spec", spec);
+        data.put("farmer", farmer);
         return Result.success(data);
     }
     

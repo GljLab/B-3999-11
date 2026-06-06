@@ -34,6 +34,34 @@
               <el-tag type="warning" size="large">采摘日期: {{ traceResult.product.harvestDate || '暂无' }}</el-tag>
             </div>
 
+            <!-- 农户信息卡片 -->
+            <div v-if="traceResult.farmer" class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-5 mb-6 border border-green-100">
+              <h3 class="text-lg font-bold text-green-800 mb-4 flex items-center">
+                <el-icon class="mr-2"><User /></el-icon>
+                生产农户
+              </h3>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <router-link :to="`/user-home/${traceResult.farmer.id}`" class="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-xl font-bold overflow-hidden hover:opacity-80 transition-opacity">
+                    <span>{{ traceResult.farmer.realName?.charAt(0) || traceResult.farmer.username?.charAt(0) }}</span>
+                  </router-link>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <router-link :to="`/user-home/${traceResult.farmer.id}`" class="font-bold text-gray-800 text-lg hover:text-green-600 transition-colors">{{ traceResult.farmer.realName || traceResult.farmer.username }}</router-link>
+                      <el-tag type="success" size="small">农户</el-tag>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">{{ traceResult.farmer.signature || '这家伙很懒，什么都没写~' }}</p>
+                  </div>
+                </div>
+                <FollowButton
+                  v-if="userStore.token && String(traceResult.farmer.id) !== String(userStore.userId)"
+                  :user-id="traceResult.farmer.id"
+                  size="default"
+                  :show-self="false"
+                />
+              </div>
+            </div>
+
             <div v-if="traceResult.spec || traceResult.batch" class="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-5 mb-6 border border-orange-100">
               <h3 class="text-lg font-bold text-orange-800 mb-3 flex items-center">
                 <el-icon class="mr-2"><Money /></el-icon>
@@ -136,10 +164,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api'
-import { Loading, Warning, Picture, Money, InfoFilled, Document, Tickets, Van } from '@element-plus/icons-vue'
+import { Loading, Warning, Picture, Money, InfoFilled, Document, Tickets, Van, User } from '@element-plus/icons-vue'
+import { useUserStore } from '@/store/user'
+import FollowButton from '@/components/FollowButton.vue'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 const traceCode = computed(() => route.params.code)
 const loading = ref(true)
 const error = ref('')

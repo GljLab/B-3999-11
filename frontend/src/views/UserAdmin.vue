@@ -64,18 +64,66 @@
 
       <el-tab-pane label="收藏统计" name="stats">
         <div class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div class="bg-green-50 rounded-xl p-4 text-center">
-              <div class="text-3xl font-bold text-green-600">{{ stats.totalFollows || 0 }}</div>
-              <div class="text-sm text-gray-500 mt-1">总收藏关系数</div>
+              <div class="text-2xl font-bold text-green-600">{{ stats.totalFollows || 0 }}</div>
+              <div class="text-xs text-gray-500 mt-1">总收藏关系数</div>
             </div>
             <div class="bg-blue-50 rounded-xl p-4 text-center">
-              <div class="text-3xl font-bold text-blue-600">{{ stats.avgFollowsPerUser || 0 }}</div>
-              <div class="text-sm text-gray-500 mt-1">人均收藏数</div>
+              <div class="text-2xl font-bold text-blue-600">{{ stats.avgFollowsPerUser || 0 }}</div>
+              <div class="text-xs text-gray-500 mt-1">人均收藏数</div>
             </div>
             <div class="bg-purple-50 rounded-xl p-4 text-center">
-              <div class="text-3xl font-bold text-purple-600">{{ stats.totalUsers || 0 }}</div>
-              <div class="text-sm text-gray-500 mt-1">总用户数</div>
+              <div class="text-2xl font-bold text-purple-600">{{ stats.mutualFollows || 0 }}</div>
+              <div class="text-xs text-gray-500 mt-1">互相收藏数</div>
+            </div>
+            <div class="bg-cyan-50 rounded-xl p-4 text-center">
+              <div class="text-2xl font-bold text-cyan-600">{{ stats.activeUsers7d || 0 }}</div>
+              <div class="text-xs text-gray-500 mt-1">7日活跃用户</div>
+            </div>
+            <div class="bg-orange-50 rounded-xl p-4 text-center">
+              <div class="text-2xl font-bold text-orange-600">{{ stats.activeRate7d || 0 }}%</div>
+              <div class="text-xs text-gray-500 mt-1">7日活跃率</div>
+            </div>
+            <div class="bg-red-50 rounded-xl p-4 text-center">
+              <div class="text-2xl font-bold text-red-600">{{ stats.cancelRate || 0 }}%</div>
+              <div class="text-xs text-gray-500 mt-1">取消率</div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl p-6 border border-gray-100">
+            <h3 class="font-semibold text-gray-800 mb-4">📈 收藏增长趋势（最近30天）</h3>
+            <div v-if="stats.growthTrend && stats.growthTrend.length > 0" class="space-y-2">
+              <div v-for="item in stats.growthTrend.slice(-7)" :key="item.date" class="flex items-center gap-4">
+                <span class="text-sm text-gray-500 w-24">{{ item.date }}</span>
+                <div class="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
+                  <div 
+                    class="bg-gradient-to-r from-green-400 to-green-600 h-full rounded-full flex items-center justify-end pr-2 transition-all duration-500" 
+                    :style="{ width: Math.min((item.newFollows || 0) * 10, 100) + '%' }"
+                  >
+                    <span v-if="item.newFollows > 0" class="text-xs text-white font-medium">{{ item.newFollows }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center py-8 text-gray-400">
+              暂无趋势数据
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl p-6 border border-gray-100">
+            <h3 class="font-semibold text-gray-800 mb-4">📊 活跃度分析</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="bg-gray-50 rounded-lg p-4">
+                <div class="text-sm text-gray-500 mb-2">7日活跃用户</div>
+                <div class="text-3xl font-bold text-cyan-600">{{ stats.activeUsers7d || 0 }} 人</div>
+                <div class="text-xs text-gray-400 mt-1">活跃率: {{ stats.activeRate7d || 0 }}%</div>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-4">
+                <div class="text-sm text-gray-500 mb-2">30日活跃用户</div>
+                <div class="text-3xl font-bold text-blue-600">{{ stats.activeUsers30d || 0 }} 人</div>
+                <div class="text-xs text-gray-400 mt-1">活跃率: {{ stats.activeRate30d || 0 }}%</div>
+              </div>
             </div>
           </div>
 

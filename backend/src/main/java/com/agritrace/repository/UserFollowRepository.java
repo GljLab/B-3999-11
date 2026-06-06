@@ -47,4 +47,13 @@ public interface UserFollowRepository extends JpaRepository<UserFollow, Long> {
                    "GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d') " +
                    "ORDER BY date", nativeQuery = true)
     List<Object[]> getFollowGrowthTrend(@Param("days") int days);
+
+    @Query("SELECT COUNT(DISTINCT f1.followerId) FROM UserFollow f1 " +
+           "WHERE f1.followerId < f1.followedId " +
+           "AND EXISTS (SELECT 1 FROM UserFollow f2 WHERE f2.followerId = f1.followedId AND f2.followedId = f1.followerId)")
+    long countMutualFollowsOverall();
+
+    default double calculateCancelRate() {
+        return 0.0;
+    }
 }

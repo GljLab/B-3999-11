@@ -64,15 +64,12 @@
               <router-link :to="`/user-home/${post.authorId}`" class="text-gray-700 font-medium hover:text-green-600 transition-colors">{{ post.authorName }}</router-link>
               <el-tag v-if="post.authorRole === 'FARMER'" type="warning" size="small" effect="dark">农场主</el-tag>
               <el-tag v-else-if="post.authorRole === 'SYS_ADMIN'" type="danger" size="small" effect="dark">管理者</el-tag>
-              <el-button
+              <FollowButton
                 v-if="userStore.token && String(post.authorId) !== String(userStore.userId)"
-                text
-                size="small"
-                class="!p-0 !h-5"
-                @click.stop="goUserHome(post.authorId)"
-              >
-                👤
-              </el-button>
+                :user-id="post.authorId"
+                size="mini"
+                :show-self="false"
+              />
             </div>
             <span class="text-gray-400">{{ formatTime(post.createdAt) }}</span>
           </div>
@@ -217,6 +214,7 @@ import api from '@/api'
 import { ElMessage } from 'element-plus'
 import { Loading, Plus } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
+import FollowButton from '@/components/FollowButton.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
