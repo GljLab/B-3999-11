@@ -11,6 +11,9 @@
         <router-link to="/community" class="block px-6 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors" active-class="bg-green-50 text-green-600 border-r-4 border-green-600">
           社区广场
         </router-link>
+        <router-link v-if="userStore.token" :to="`/user-home/${userStore.userId}`" class="block px-6 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors" active-class="bg-green-50 text-green-600 border-r-4 border-green-600">
+          我的主页
+        </router-link>
         <router-link v-if="userStore.token" to="/my-interactions" class="block px-6 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors" active-class="bg-green-50 text-green-600 border-r-4 border-green-600">
           我的互动
         </router-link>
