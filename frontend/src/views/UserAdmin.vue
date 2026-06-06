@@ -5,7 +5,9 @@
       <el-button type="primary" round @click="openCreateDialog">+ 新增用户</el-button>
     </div>
 
-    <el-table :data="users" stripe class="w-full flex-1" :loading="loading" v-loading="loading">
+    <el-tabs v-model="activeTab" class="flex-1 flex flex-col">
+      <el-tab-pane label="用户列表" name="list" class="flex-1 flex flex-col">
+        <el-table :data="users" stripe class="w-full flex-1" :loading="loading" v-loading="loading">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="username" label="用户名" width="160" />
       <el-table-column prop="realName" label="姓名/企业" min-width="160" />
@@ -58,6 +60,61 @@
         </template>
       </el-table-column>
     </el-table>
+      </el-tab-pane>
+
+      <el-tab-pane label="收藏统计" name="stats">
+        <div class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-green-50 rounded-xl p-4 text-center">
+              <div class="text-3xl font-bold text-green-600">{{ stats.totalFollows || 0 }}</div>
+              <div class="text-sm text-gray-500 mt-1">总收藏关系数</div>
+            </div>
+            <div class="bg-blue-50 rounded-xl p-4 text-center">
+              <div class="text-3xl font-bold text-blue-600">{{ stats.avgFollowsPerUser || 0 }}</div>
+              <div class="text-sm text-gray-500 mt-1">人均收藏数</div>
+            </div>
+            <div class="bg-purple-50 rounded-xl p-4 text-center">
+              <div class="text-3xl font-bold text-purple-600">{{ stats.totalUsers || 0 }}</div>
+              <div class="text-sm text-gray-500 mt-1">总用户数</div>
+            </div>
+          </div>
+
+          <div class="bg-gray-50 rounded-xl p-4">
+            <h3 class="font-semibold text-gray-800 mb-4">🏆 支持者排行榜</h3>
+            <div class="mb-4">
+              <el-select v-model="rankRoleFilter" size="small" placeholder="按角色筛选" clearable @change="loadRankings">
+                <el-option label="普通用户" value="USER" />
+                <el-option label="农户" value="FARMER" />
+                <el-option label="物流管理员" value="LOGS_ADMIN" />
+                <el-option label="系统管理员" value="SYS_ADMIN" />
+              </el-select>
+            </div>
+            <el-table :data="rankings" stripe v-loading="rankingLoading">
+              <el-table-column type="index" label="排名" width="80" />
+              <el-table-column label="用户" min-width="150">
+                <template #default="{ row }">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium">{{ row.realName }}</span>
+                    <el-tag size="small" :type="roleTagType(row.role)">{{ roleLabel(row.role) }}</el-tag>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="followerCount" label="支持者数" width="120" sortable />
+              <el-table-column prop="followingCount" label="收藏数" width="120" sortable />
+            </el-table>
+            <div v-if="rankingTotal > 50" class="flex justify-end mt-4">
+              <el-pagination
+                v-model:current-page="rankingPage"
+                :page-size="50"
+                :total="rankingTotal"
+                layout="prev, pager, next, total"
+                @current-change="loadRankings"
+              />
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
 
     <el-dialog v-model="dialogVisible" title="新增系统用户" width="520px">
       <el-form label-position="top">
@@ -93,13 +150,21 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
-import api from '@/api'
+import { onMounted, ref, watch } from 'vue'
+import api, { userApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+const activeTab = ref('list')
 const loading = ref(false)
 const creating = ref(false)
 const dialogVisible = ref(false)
+
+const stats = ref({})
+const rankings = ref([])
+const rankingLoading = ref(false)
+const rankingPage = ref(0)
+const rankingTotal = ref(0)
+const rankRoleFilter = ref('')
 const users = ref([])
 const roleOptions = [
   { value: 'USER', label: '普通用户' },
@@ -120,6 +185,60 @@ const formatDate = (value) => {
   if (!value) return '-'
   return new Date(value).toLocaleString()
 }
+
+const roleLabel = (role) => {
+  const map = {
+    'USER': '普通用户',
+    'FARMER': '农户',
+    'LOGS_ADMIN': '物流管理员',
+    'SYS_ADMIN': '系统管理员'
+  }
+  return map[role] || '未知'
+}
+
+const roleTagType = (role) => {
+  const map = {
+    'USER': 'info',
+    'FARMER': 'success',
+    'LOGS_ADMIN': 'warning',
+    'SYS_ADMIN': 'danger'
+  }
+  return map[role] || 'info'
+}
+
+const loadStats = async () => {
+  try {
+    const res = await userApi.getAdminStats()
+    stats.value = res.data
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const loadRankings = async (page = 0) => {
+  rankingPage.value = page
+  rankingLoading.value = true
+  try {
+    const res = await userApi.getFollowerRankings({
+      page,
+      size: 50,
+      role: rankRoleFilter.value || undefined
+    })
+    rankings.value = res.data.content
+    rankingTotal.value = res.data.totalElements
+  } catch (err) {
+    console.error(err)
+  } finally {
+    rankingLoading.value = false
+  }
+}
+
+watch(activeTab, (tab) => {
+  if (tab === 'stats') {
+    loadStats()
+    loadRankings()
+  }
+})
 
 const resetForm = () => {
   form.value = {

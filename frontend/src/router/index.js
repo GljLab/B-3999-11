@@ -33,6 +33,7 @@ const routes = [
       { path: 'topics', name: 'TopicSquare', component: () => import('@/views/TopicSquare.vue') },
       { path: 'topics/:id', name: 'TopicDetail', component: () => import('@/views/TopicDetail.vue') },
       { path: 'my-interactions', name: 'MyInteractions', component: () => import('@/views/MyInteractions.vue') },
+      { path: 'user-home/:id', name: 'UserHome', component: () => import('@/views/UserHome.vue') },
       { path: 'community-admin', name: 'CommunityAdmin', component: () => import('@/views/CommunityAdmin.vue'), meta: { roles: ['SYS_ADMIN'] } },
       { path: 'topic-admin', name: 'TopicAdmin', component: () => import('@/views/TopicAdmin.vue'), meta: { roles: ['SYS_ADMIN'] } },
       { path: 'smart-tagging', name: 'SmartTagging', component: () => import('@/views/SmartTagging.vue'), meta: { roles: ['SYS_ADMIN'] } }

@@ -14,15 +14,21 @@
       <div class="p-8">
         <div class="flex items-center justify-between mb-6">
           <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl font-bold overflow-hidden">
+            <router-link :to="`/user-home/${post.authorId}`" class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl font-bold overflow-hidden hover:opacity-80 transition-opacity">
               <img v-if="post.authorAvatar" :src="getImageUrl(post.authorAvatar)" class="w-full h-full object-cover" />
               <span v-else>{{ post.authorName ? post.authorName.charAt(0) : '?' }}</span>
-            </div>
+            </router-link>
             <div>
               <div class="flex items-center gap-2">
-                <span class="text-lg font-bold text-gray-800">{{ post.authorName }}</span>
+                <router-link :to="`/user-home/${post.authorId}`" class="text-lg font-bold text-gray-800 hover:text-green-600 transition-colors">{{ post.authorName }}</router-link>
                 <el-tag v-if="post.authorRole === 'FARMER'" type="warning" size="small" effect="dark">农场主</el-tag>
                 <el-tag v-else-if="post.authorRole === 'SYS_ADMIN'" type="danger" size="small" effect="dark">管理者</el-tag>
+                <FollowButton
+                  v-if="userStore.token && String(post.authorId) !== String(userStore.userId)"
+                  :user-id="post.authorId"
+                  size="small"
+                  :show-self="false"
+                />
               </div>
               <div class="flex items-center gap-2 text-sm text-gray-400">
                 <span>{{ formatTime(post.createdAt) }}</span>
@@ -381,6 +387,7 @@ import api from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Loading, Plus } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
+import FollowButton from '@/components/FollowButton.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -115,14 +115,87 @@
           />
         </div>
       </el-tab-pane>
+
+      <el-tab-pane label="📢 收藏动态" name="follow-feed">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2">
+            <div v-if="followFeed.length === 0 && !followFeedLoading" class="py-12 text-center">
+              <template v-if="followFeedEmpty">
+                <p class="text-gray-400 mb-4">还没有收藏任何农友</p>
+                <p class="text-sm text-gray-500 mb-6">收藏感兴趣的农友，第一时间获取他们的动态</p>
+              </template>
+              <template v-else>
+                <p class="text-gray-400">暂无动态</p>
+              </template>
+            </div>
+            <div v-else class="space-y-4">
+              <div v-for="item in followFeed" :key="item.id" class="border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <div class="flex items-start gap-3">
+                  <router-link :to="`/user-home/${item.user.id}`" class="flex-shrink-0">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold">
+                      {{ item.user.realName?.charAt(0) || item.user.username?.charAt(0) }}
+                    </div>
+                  </router-link>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                      <router-link :to="`/user-home/${item.user.id}`" class="font-medium text-gray-800 hover:text-green-600">{{ item.user.realName }}</router-link>
+                      <span class="text-xs text-gray-400">{{ formatActivityType(item.activityType) }}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-2">{{ getActivityContent(item) }}</p>
+                    <p class="text-xs text-gray-400">{{ formatDate(item.createdAt) }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-if="followFeedTotal > 20" class="flex justify-end mt-6">
+              <el-pagination
+                v-model:current-page="followFeedPage"
+                :page-size="20"
+                :total="followFeedTotal"
+                layout="prev, pager, next, total"
+                @current-change="loadFollowFeed"
+              />
+            </div>
+          </div>
+          <div class="space-y-4">
+            <div class="bg-gray-50 rounded-xl p-4">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-800">✨ 推荐农友</h3>
+                <el-button size="small" text @click="loadRecommendUsers" :loading="recommendLoading">
+                  🔄 换一批
+                </el-button>
+              </div>
+              <div class="space-y-3">
+                <div v-for="user in recommendUsers" :key="user.id" class="flex items-center gap-3 p-2 rounded-lg hover:bg-white transition-colors">
+                  <router-link :to="`/user-home/${user.id}`" class="flex-shrink-0">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold">
+                      {{ user.realName?.charAt(0) || user.username?.charAt(0) }}
+                    </div>
+                  </router-link>
+                  <div class="flex-1 min-w-0">
+                    <router-link :to="`/user-home/${user.id}`" class="font-medium text-gray-800 hover:text-green-600 text-sm">{{ user.realName }}</router-link>
+                    <p class="text-xs text-gray-500 truncate">{{ user.signature || '暂无签名' }}</p>
+                  </div>
+                  <FollowButton
+                    :user-id="user.id"
+                    size="small"
+                    :show-self="false"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import api from '@/api'
+import api, { userApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import FollowButton from '@/components/FollowButton.vue'
 
 const activeTab = ref('likes')
 
@@ -140,6 +213,15 @@ const comments = ref([])
 const commentsLoading = ref(false)
 const commentsPage = ref(1)
 const commentsTotal = ref(0)
+
+const followFeed = ref([])
+const followFeedLoading = ref(false)
+const followFeedPage = ref(0)
+const followFeedTotal = ref(0)
+const followFeedEmpty = ref(false)
+
+const recommendUsers = ref([])
+const recommendLoading = ref(false)
 
 const formatDate = (value) => {
   if (!value) return '-'
@@ -185,10 +267,64 @@ const loadComments = async () => {
   }
 }
 
+const formatActivityType = (type) => {
+  const map = {
+    'NEW_POST': '发布了新帖子',
+    'POST_HOT': '帖子上热门',
+    'NEW_PRODUCT': '发布了新产品',
+    'PRODUCT_HOT': '产品热度上升',
+    'NEW_SUPPORTER': '获得了新支持者',
+    'NEW_FOLLOW': '收藏了新农友'
+  }
+  return map[type] || '有新动态'
+}
+
+const getActivityContent = (item) => {
+  switch (item.activityType) {
+    case 'NEW_FOLLOW':
+      return '收藏了一位新农友'
+    case 'NEW_POST':
+      return '发布了新的社区帖子'
+    default:
+      return '有新的动态更新'
+  }
+}
+
+const loadFollowFeed = async (page = 0) => {
+  followFeedPage.value = page
+  followFeedLoading.value = true
+  try {
+    const res = await userApi.getFollowFeed({ page, size: 20 })
+    followFeed.value = res.data.content
+    followFeedTotal.value = res.data.totalElements
+    followFeedEmpty.value = res.data.isEmpty
+  } catch (err) {
+    console.error(err)
+  } finally {
+    followFeedLoading.value = false
+  }
+}
+
+const loadRecommendUsers = async () => {
+  recommendLoading.value = true
+  try {
+    const res = await userApi.getRecommendUsers({ limit: 5 })
+    recommendUsers.value = res.data
+  } catch (err) {
+    console.error(err)
+  } finally {
+    recommendLoading.value = false
+  }
+}
+
 const handleTabChange = (tab) => {
   if (tab === 'likes') loadLikes()
   else if (tab === 'bookmarks') loadBookmarks()
   else if (tab === 'comments') loadComments()
+  else if (tab === 'follow-feed') {
+    loadFollowFeed()
+    if (recommendUsers.value.length === 0) loadRecommendUsers()
+  }
 }
 
 const removeLike = async (row) => {

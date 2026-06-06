@@ -15,8 +15,11 @@ public class User {
     private Integer enabled;
     private String realName;
     private String phone;
+    private String signature;
+    private String avatar;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime lastActiveAt;
 
     @PrePersist
     protected void onCreate() {

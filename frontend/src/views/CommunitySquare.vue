@@ -61,9 +61,18 @@
           </p>
           <div class="flex items-center justify-between text-sm mb-3">
             <div class="flex items-center gap-2">
-              <span class="text-gray-700 font-medium">{{ post.authorName }}</span>
+              <router-link :to="`/user-home/${post.authorId}`" class="text-gray-700 font-medium hover:text-green-600 transition-colors">{{ post.authorName }}</router-link>
               <el-tag v-if="post.authorRole === 'FARMER'" type="warning" size="small" effect="dark">农场主</el-tag>
               <el-tag v-else-if="post.authorRole === 'SYS_ADMIN'" type="danger" size="small" effect="dark">管理者</el-tag>
+              <el-button
+                v-if="userStore.token && String(post.authorId) !== String(userStore.userId)"
+                text
+                size="small"
+                class="!p-0 !h-5"
+                @click.stop="goUserHome(post.authorId)"
+              >
+                👤
+              </el-button>
             </div>
             <span class="text-gray-400">{{ formatTime(post.createdAt) }}</span>
           </div>
@@ -364,6 +373,10 @@ const goTopicDetail = (id) => {
 const goLogin = () => {
   ElMessage.warning('请先登录后再操作')
   router.push('/login')
+}
+
+const goUserHome = (userId) => {
+  router.push(`/user-home/${userId}`)
 }
 
 const toggleLike = async (post) => {
